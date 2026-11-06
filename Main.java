@@ -1,584 +1,981 @@
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.*;
 import java.io.*;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.table.*;
 
 public class Main extends JFrame {
 
-    private final HostelService service = new HostelService();
-    private DefaultTableModel model;
-    private JTable table;
-    private JPanel dashboard;
-    private JLabel totalStudents, totalRooms, occupiedRooms, revenue;
-    private JTextField searchField;
+    // HIGH-CONTRAST PROFESSIONAL THEME
+    static final Color NAVY = new Color(18, 30, 55);
+    static final Color NAVY_LIGHT = new Color(30, 48, 78);
+    static final Color BLUE = new Color(35, 105, 220);
+    static final Color BLUE_DARK = new Color(22, 75, 165);
+    static final Color BG = new Color(242, 245, 250);
+    static final Color WHITE = Color.WHITE;
+    static final Color TEXT = new Color(25, 35, 55);
+    static final Color MUTED = new Color(85, 98, 120);
+    static final Color GREEN = new Color(20, 145, 95);
+    static final Color RED = new Color(195, 55, 65);
+    static final Color BORDER = new Color(215, 222, 233);
 
-    private final Color NAVY = new Color(20, 28, 52);
-    private final Color BLUE = new Color(67, 97, 238);
-    private final Color BG = new Color(243, 246, 252);
-    private final Color WHITE = Color.WHITE;
+    private CardLayout cardLayout = new CardLayout();
+    private JPanel content = new JPanel(cardLayout);
+    private JLabel welcomeLabel;
+
+    private DefaultTableModel studentModel;
+    private JTable studentTable;
+    private DefaultTableModel feeModel;
+    private JTable feeTable;
+
+    private List<Student> students;
 
     public Main() {
-        setTitle("HostelPro Premium | Management System");
-        setSize(1150, 720);
-        setMinimumSize(new Dimension(950, 600));
+        students = HostelService.loadStudents();
+
+        setTitle("HostelPro Premium | Hostel Management System");
+        setSize(1250, 760);
+        setMinimumSize(new Dimension(1000, 650));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-
         setLayout(new BorderLayout());
 
-        add(createSidebar(), BorderLayout.WEST);
-        add(createMainArea(), BorderLayout.CENTER);
+        createSidebar();
+        createPages();
 
-        refreshData();
+        getContentPane().setBackground(BG);
+        setVisible(true);
     }
 
-    private JPanel createSidebar() {
-        JPanel side = new JPanel();
-        side.setBackground(NAVY);
-        side.setPreferredSize(new Dimension(225, 0));
-        side.setLayout(new BoxLayout(side, BoxLayout.Y_AXIS));
-        side.setBorder(new EmptyBorder(25, 16, 20, 16));
+    // LOGIN
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                UIManager.put("OptionPane.background", WHITE);
+                UIManager.put("Panel.background", WHITE);
+                UIManager.put("OptionPane.messageForeground", TEXT);
+                UIManager.put("Label.foreground", TEXT);
+                UIManager.put("TextField.foreground", TEXT);
+                UIManager.put("TextField.background", WHITE);
+                UIManager.put("PasswordField.foreground", TEXT);
+                UIManager.put("PasswordField.background", WHITE);
+                UIManager.put("ComboBox.foreground", TEXT);
+                UIManager.put("ComboBox.background", WHITE);
+            } catch (Exception ignored) {}
 
-        JLabel logo = new JLabel("  HOSTELPRO");
+            showLogin();
+        });
+    }
+
+    static void showLogin() {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 8, 8));
+        panel.setBackground(WHITE);
+        panel.setBorder(new EmptyBorder(15, 20, 15, 20));
+
+        JLabel title = new JLabel("HOSTELPRO PREMIUM", SwingConstants.CENTER);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        title.setForeground(NAVY);
+
+        JLabel subtitle = new JLabel("Administrator Login", SwingConstants.CENTER);
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        subtitle.setForeground(MUTED);
+
+        JTextField username = new JTextField("admin", 18);
+        JPasswordField password = new JPasswordField(18);
+
+        styleInput(username);
+        styleInput(password);
+
+        panel.add(title);
+        panel.add(subtitle);
+        panel.add(new JLabel("Username"));
+        panel.add(username);
+        panel.add(new JLabel("Password"));
+        panel.add(password);
+
+        int result = JOptionPane.showConfirmDialog(
+            null, panel, "HostelPro Login",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (result == JOptionPane.OK_OPTION) {
+            String user = username.getText().trim();
+            String pass = new String(password.getPassword());
+
+            if (user.equals("admin") && pass.equals("admin123")) {
+                new Main();
+            } else {
+                JOptionPane.showMessageDialog(
+                    null, "Invalid username or password.",
+                    "Login Failed", JOptionPane.ERROR_MESSAGE
+                );
+                showLogin();
+            }
+        }
+    }
+
+    // SIDEBAR
+    private void createSidebar() {
+        JPanel sidebar = new JPanel();
+        sidebar.setPreferredSize(new Dimension(235, 0));
+        sidebar.setBackground(NAVY);
+        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+        sidebar.setBorder(new EmptyBorder(22, 14, 18, 14));
+
+        JLabel logo = new JLabel("HOSTELPRO");
+        logo.setFont(new Font("Segoe UI", Font.BOLD, 25));
         logo.setForeground(WHITE);
-        logo.setFont(new Font("Segoe UI", Font.BOLD, 23));
+        logo.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel subtitle = new JLabel("  PREMIUM MANAGEMENT");
-        subtitle.setForeground(new Color(160, 175, 210));
-        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        JLabel premium = new JLabel("PREMIUM MANAGEMENT");
+        premium.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        premium.setForeground(new Color(180, 200, 230));
+        premium.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        side.add(logo);
-        side.add(Box.createVerticalStrut(5));
-        side.add(subtitle);
-        side.add(Box.createVerticalStrut(55));
+        sidebar.add(logo);
+        sidebar.add(Box.createVerticalStrut(5));
+        sidebar.add(premium);
+        sidebar.add(Box.createVerticalStrut(35));
 
-        side.add(menuLabel("MAIN MENU"));
-        side.add(Box.createVerticalStrut(15));
-        side.add(menuButton("Dashboard", "dashboard"));
-        side.add(menuButton("Student Management", "students"));
-        side.add(menuButton("Room Management", "rooms"));
-        side.add(menuButton("Fee Management", "fees"));
+        addNavButton(sidebar, "Dashboard", "dashboard");
+        addNavButton(sidebar, "Student Management", "students");
+        addNavButton(sidebar, "Room Management", "rooms");
+        addNavButton(sidebar, "Fee Management", "fees");
+        addNavButton(sidebar, "Reports & Analytics", "reports");
 
-        side.add(Box.createVerticalGlue());
+        sidebar.add(Box.createVerticalGlue());
 
-        JLabel footer = new JLabel("HostelPro Premium v1.0");
-        footer.setForeground(new Color(160, 175, 210));
-        footer.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        side.add(footer);
+        JButton logout = new JButton("Logout");
+        logout.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        logout.setForeground(WHITE);
+        logout.setBackground(new Color(165, 48, 60));
+        logout.setFocusPainted(false);
+        logout.setBorder(new EmptyBorder(12, 15, 12, 15));
+        logout.setAlignmentX(Component.LEFT_ALIGNMENT);
+        logout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
+        logout.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        return side;
+        logout.addActionListener(e -> {
+            dispose();
+            showLogin();
+        });
+
+        sidebar.add(logout);
+        add(sidebar, BorderLayout.WEST);
     }
 
-    private JLabel menuLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setForeground(new Color(130, 150, 190));
-        label.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        return label;
-    }
-
-    private JButton menuButton(String text, String page) {
+    private void addNavButton(JPanel sidebar, String text, String page) {
         JButton button = new JButton(text);
-        button.setMaximumSize(new Dimension(195, 45));
-        button.setAlignmentX(Component.LEFT_ALIGNMENT);
-        button.setHorizontalAlignment(SwingConstants.LEFT);
-        button.setBackground(NAVY);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 13));
         button.setForeground(WHITE);
+        button.setBackground(NAVY);
+        button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setFocusPainted(false);
-        button.setBorder(new EmptyBorder(10, 12, 10, 5));
-        button.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        button.setBorder(new EmptyBorder(13, 12, 13, 8));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
+        button.setAlignmentX(Component.LEFT_ALIGNMENT);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        button.addActionListener(e -> showPage(page));
-        return button;
+        button.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(NAVY_LIGHT);
+            }
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(NAVY);
+            }
+        });
+
+        button.addActionListener(e -> {
+            cardLayout.show(content, page);
+            refreshTables();
+        });
+
+        sidebar.add(button);
+        sidebar.add(Box.createVerticalStrut(5));
     }
 
-    private JPanel createMainArea() {
-        JPanel main = new JPanel(new BorderLayout());
-        main.setBackground(BG);
+    // PAGES
+    private void createPages() {
+        content.setBackground(BG);
 
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(WHITE);
-        header.setBorder(new EmptyBorder(17, 28, 17, 28));
+        content.add(createDashboard(), "dashboard");
+        content.add(createStudentPage(), "students");
+        content.add(createRoomPage(), "rooms");
+        content.add(createFeePage(), "fees");
+        content.add(createReportPage(), "reports");
 
-        JLabel heading = new JLabel("Hostel Administration");
-        heading.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        heading.setForeground(NAVY);
-
-        JLabel admin = new JLabel("ADMINISTRATOR");
-        admin.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        admin.setForeground(BLUE);
-
-        header.add(heading, BorderLayout.WEST);
-        header.add(admin, BorderLayout.EAST);
-
-        dashboard = new JPanel(new BorderLayout());
-        dashboard.setBackground(BG);
-        dashboard.setBorder(new EmptyBorder(25, 25, 25, 25));
-
-        main.add(header, BorderLayout.NORTH);
-        main.add(dashboard, BorderLayout.CENTER);
-
-        showPage("dashboard");
-        return main;
+        add(content, BorderLayout.CENTER);
     }
 
-    private void showPage(String page) {
-        dashboard.removeAll();
+    private JPanel pagePanel(String heading, String description) {
+        JPanel page = new JPanel(new BorderLayout(15, 15));
+        page.setBackground(BG);
+        page.setBorder(new EmptyBorder(25, 28, 25, 28));
 
-        if (page.equals("dashboard")) {
-            showDashboard();
-        } else if (page.equals("students")) {
-            showStudents();
-        } else if (page.equals("rooms")) {
-            showRooms();
-        } else if (page.equals("fees")) {
-            showFees();
-        }
+        JPanel top = new JPanel();
+        top.setBackground(BG);
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
 
-        dashboard.revalidate();
-        dashboard.repaint();
+        JLabel title = new JLabel(heading);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 27));
+        title.setForeground(NAVY);
+
+        JLabel sub = new JLabel(description);
+        sub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        sub.setForeground(MUTED);
+
+        top.add(title);
+        top.add(Box.createVerticalStrut(5));
+        top.add(sub);
+
+        page.add(top, BorderLayout.NORTH);
+        return page;
     }
 
-    private JPanel createCard(String title, JLabel value, Color color) {
-        JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+    // DASHBOARD
+    private JPanel createDashboard() {
+        JPanel page = pagePanel(
+            "Dashboard",
+            "Welcome to your HostelPro Premium management dashboard"
+        );
+
+        JPanel body = new JPanel(new BorderLayout(15, 15));
+        body.setBackground(BG);
+
+        JPanel cards = new JPanel(new GridLayout(1, 3, 15, 15));
+        cards.setBackground(BG);
+
+        cards.add(statCard("TOTAL STUDENTS", () -> "" + students.size(), BLUE));
+        cards.add(statCard("FEES PAID", () -> "" + countPaid(), GREEN));
+        cards.add(statCard("FEES PENDING", () -> "" + countPending(), RED));
+
+        JPanel info = new JPanel(new BorderLayout());
+        info.setBackground(WHITE);
+        info.setBorder(new CompoundBorder(
+            new LineBorder(BORDER, 1),
+            new EmptyBorder(25, 25, 25, 25)
+        ));
+
+        JLabel infoTitle = new JLabel("Hostel Management Overview");
+        infoTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        infoTitle.setForeground(NAVY);
+
+        JTextArea description = new JTextArea(
+            "\nWelcome to HostelPro Premium!\n\n" +
+            "Manage your hostel activities from one place.\n\n" +
+            "• Register and manage student records\n" +
+            "• Track room allocation and occupancy\n" +
+            "• Manage student fee payments\n" +
+            "• Generate printable fee receipts\n" +
+            "• View hostel reports and statistics\n\n" +
+            "Use the navigation menu to access each section."
+        );
+        description.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        description.setForeground(TEXT);
+        description.setBackground(WHITE);
+        description.setEditable(false);
+        description.setFocusable(false);
+
+        info.add(infoTitle, BorderLayout.NORTH);
+        info.add(description, BorderLayout.CENTER);
+
+        body.add(cards, BorderLayout.NORTH);
+        body.add(info, BorderLayout.CENTER);
+
+        page.add(body, BorderLayout.CENTER);
+        return page;
+    }
+
+    interface ValueProvider {
+        String get();
+    }
+
+    private JPanel statCard(String title, ValueProvider value, Color accent) {
+        JPanel card = new JPanel(new BorderLayout(5, 12));
         card.setBackground(WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(230, 234, 242)),
-                new EmptyBorder(20, 20, 20, 20)
+        card.setBorder(new CompoundBorder(
+            new LineBorder(BORDER, 1),
+            new EmptyBorder(22, 20, 22, 20)
         ));
 
         JLabel name = new JLabel(title);
-        name.setForeground(new Color(110, 120, 140));
-        name.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        name.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        name.setForeground(MUTED);
 
-        value.setForeground(color);
-        value.setFont(new Font("Segoe UI", Font.BOLD, 29));
+        JLabel number = new JLabel(value.get());
+        number.setFont(new Font("Segoe UI", Font.BOLD, 34));
+        number.setForeground(accent);
 
-        card.add(name);
-        card.add(Box.createVerticalStrut(15));
-        card.add(value);
-
+        card.add(name, BorderLayout.NORTH);
+        card.add(number, BorderLayout.CENTER);
         return card;
     }
 
-    private void showDashboard() {
-        JPanel content = new JPanel(new BorderLayout(0, 25));
-        content.setBackground(BG);
+    // STUDENT MANAGEMENT
+    private JPanel createStudentPage() {
+        JPanel page = pagePanel(
+            "Student Management",
+            "Add, edit, search and manage hostel student records"
+        );
 
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(BG);
-
-        JLabel title = new JLabel("Dashboard Overview");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 25));
-        title.setForeground(NAVY);
-
-        JLabel welcome = new JLabel("Welcome to HostelPro Premium");
-        welcome.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        welcome.setForeground(Color.GRAY);
-
-        JPanel titles = new JPanel();
-        titles.setBackground(BG);
-        titles.setLayout(new BoxLayout(titles, BoxLayout.Y_AXIS));
-        titles.add(title);
-        titles.add(Box.createVerticalStrut(7));
-        titles.add(welcome);
-
-        JButton add = new JButton("+ Add Student");
-        styleButton(add);
-        add.addActionListener(e -> addStudent());
-
-        top.add(titles, BorderLayout.WEST);
-        top.add(add, BorderLayout.EAST);
-
-        JPanel cards = new JPanel(new GridLayout(1, 4, 15, 15));
-        cards.setBackground(BG);
-
-        totalStudents = new JLabel("0");
-        totalRooms = new JLabel("0");
-        occupiedRooms = new JLabel("0");
-        revenue = new JLabel("₹0");
-
-        cards.add(createCard("TOTAL STUDENTS", totalStudents, BLUE));
-        cards.add(createCard("TOTAL ROOMS", totalRooms, new Color(20, 160, 130)));
-        cards.add(createCard("OCCUPIED ROOMS", occupiedRooms, new Color(220, 145, 30)));
-        cards.add(createCard("FEES COLLECTED", revenue, new Color(130, 85, 200)));
-
-        JPanel bottom = new JPanel(new BorderLayout());
-        bottom.setBackground(WHITE);
-        bottom.setBorder(new EmptyBorder(20, 20, 20, 20));
-
-        JLabel recent = new JLabel("Recent Student Records");
-        recent.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        recent.setForeground(NAVY);
-
-        JTable recentTable = new JTable();
-        DefaultTableModel recentModel = new DefaultTableModel(
-                new String[]{"Student Name", "Roll Number", "Room", "Course", "Fee Status"}, 0) {
+        studentModel = new DefaultTableModel(
+            new String[]{"Name", "Roll Number", "Phone", "Course", "Room", "Fee", "Status"}, 0
+        ) {
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
 
-        for (Student s : service.getStudents()) {
-            recentModel.addRow(new Object[]{
-                    s.name, s.roll, s.room, s.course,
-                    s.paid ? "Paid" : "Pending"
-            });
-        }
+        studentTable = createTable(studentModel);
 
-        recentTable.setModel(recentModel);
-        styleTable(recentTable);
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        toolbar.setBackground(BG);
 
-        bottom.add(recent, BorderLayout.NORTH);
-        bottom.add(new JScrollPane(recentTable), BorderLayout.CENTER);
+        JButton add = button("Add Student", BLUE);
+        JButton edit = button("Edit Student", NAVY);
+        JButton delete = button("Delete Student", RED);
 
-        content.add(top, BorderLayout.NORTH);
-        content.add(cards, BorderLayout.CENTER);
-        content.add(bottom, BorderLayout.SOUTH);
+        JTextField search = new JTextField(18);
+        styleInput(search);
+        search.setToolTipText("Search by name or roll number");
 
-        dashboard.add(content, BorderLayout.CENTER);
-        updateStatistics();
-    }
+        JButton find = button("Search", BLUE_DARK);
+        JButton clear = button("Show All", MUTED);
 
-    private void showStudents() {
-        JPanel panel = new JPanel(new BorderLayout(0, 15));
-        panel.setBackground(BG);
-
-        JLabel title = new JLabel("Student Management");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(NAVY);
-
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(BG);
-        top.add(title, BorderLayout.WEST);
-
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        actions.setBackground(BG);
-
-        searchField = new JTextField(15);
-        JButton search = new JButton("Search");
-        JButton add = new JButton("+ Add Student");
-        JButton delete = new JButton("Delete Selected");
-
-        styleButton(search);
-        styleButton(add);
-        styleButton(delete);
-
-        search.addActionListener(e -> refreshTable(searchField.getText()));
         add.addActionListener(e -> addStudent());
+        edit.addActionListener(e -> editStudent());
         delete.addActionListener(e -> deleteStudent());
-
-        actions.add(searchField);
-        actions.add(search);
-        actions.add(add);
-        actions.add(delete);
-
-        top.add(actions, BorderLayout.EAST);
-
-        model = new DefaultTableModel(
-                new String[]{"Name", "Roll Number", "Phone", "Course", "Room", "Fee Status"}, 0) {
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-
-        table = new JTable(model);
-        styleTable(table);
-        refreshTable("");
-
-        panel.add(top, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-
-        dashboard.add(panel, BorderLayout.CENTER);
-    }
-
-    private void showRooms() {
-        JPanel panel = new JPanel(new BorderLayout(0, 20));
-        panel.setBackground(BG);
-
-        JLabel title = new JLabel("Room Management");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(NAVY);
-
-        JPanel cards = new JPanel(new GridLayout(0, 3, 18, 18));
-        cards.setBackground(BG);
-
-        for (int i = 101; i <= 112; i++) {
-            final int roomNumber = i;
-            int count = service.countRoom(String.valueOf(i));
-            String status = count == 0 ? "Available" : "Occupied";
-
-            JPanel card = new JPanel();
-            card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-            card.setBackground(WHITE);
-            card.setBorder(new EmptyBorder(20, 20, 20, 20));
-
-            JLabel room = new JLabel("ROOM " + i);
-            room.setFont(new Font("Segoe UI", Font.BOLD, 20));
-            room.setForeground(NAVY);
-
-            JLabel occupied = new JLabel(count + " student(s)");
-            occupied.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-
-            JLabel state = new JLabel(status);
-            state.setForeground(count == 0 ? new Color(20, 160, 100) : BLUE);
-
-            card.add(room);
-            card.add(Box.createVerticalStrut(12));
-            card.add(occupied);
-            card.add(Box.createVerticalStrut(10));
-            card.add(state);
-
-            cards.add(card);
-        }
-
-        JLabel note = new JLabel("12 standard rooms | Room numbers 101–112");
-        note.setForeground(Color.GRAY);
-
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(cards, BorderLayout.CENTER);
-        panel.add(note, BorderLayout.SOUTH);
-
-        dashboard.add(panel, BorderLayout.CENTER);
-    }
-
-    private void showFees() {
-        JPanel panel = new JPanel(new BorderLayout(0, 20));
-        panel.setBackground(BG);
-
-        JLabel title = new JLabel("Fee Management");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(NAVY);
-
-        JTable feeTable = new JTable();
-        DefaultTableModel feeModel = new DefaultTableModel(
-                new String[]{"Student", "Roll Number", "Fee Amount", "Status"}, 0) {
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-
-        for (Student s : service.getStudents()) {
-            feeModel.addRow(new Object[]{
-                    s.name, s.roll, "₹" + s.fee,
-                    s.paid ? "Paid" : "Pending"
-            });
-        }
-
-        feeTable.setModel(feeModel);
-        styleTable(feeTable);
-
-        JButton payment = new JButton("Mark Selected Student as Paid");
-        styleButton(payment);
-
-        payment.addActionListener(e -> {
-            int row = feeTable.getSelectedRow();
-            if (row == -1) {
-                JOptionPane.showMessageDialog(this, "Select a student first.");
-                return;
-            }
-
-            String roll = String.valueOf(feeModel.getValueAt(row, 1));
-            service.markPaid(roll);
-            showPage("fees");
-            updateStatistics();
+        find.addActionListener(e -> searchStudents(search.getText()));
+        clear.addActionListener(e -> {
+            search.setText("");
+            refreshTables();
         });
 
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        bottom.setBackground(BG);
-        bottom.add(payment);
+        toolbar.add(add);
+        toolbar.add(edit);
+        toolbar.add(delete);
+        toolbar.add(search);
+        toolbar.add(find);
+        toolbar.add(clear);
 
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(new JScrollPane(feeTable), BorderLayout.CENTER);
-        panel.add(bottom, BorderLayout.SOUTH);
+        JPanel center = whitePanel();
+        center.setLayout(new BorderLayout(10, 10));
+        center.add(toolbar, BorderLayout.NORTH);
+        center.add(new JScrollPane(studentTable), BorderLayout.CENTER);
 
-        dashboard.add(panel, BorderLayout.CENTER);
+        page.add(center, BorderLayout.CENTER);
+        refreshTables();
+        return page;
     }
 
     private void addStudent() {
-        JTextField name = new JTextField(18);
-        JTextField roll = new JTextField(18);
-        JTextField phone = new JTextField(18);
-        JTextField course = new JTextField(18);
-        JComboBox<String> room = new JComboBox<>();
+        JTextField name = new JTextField();
+        JTextField roll = new JTextField();
+        JTextField phone = new JTextField();
+        JTextField course = new JTextField();
+        JTextField room = new JTextField("101");
+        JTextField fee = new JTextField("0");
 
-        for (int i = 101; i <= 112; i++) {
-            room.addItem(String.valueOf(i));
-        }
+        styleInput(name);
+        styleInput(roll);
+        styleInput(phone);
+        styleInput(course);
+        styleInput(room);
+        styleInput(fee);
 
-        JTextField fee = new JTextField("50000", 18);
-
-        JPanel form = new JPanel(new GridLayout(0, 2, 10, 12));
-        form.add(new JLabel("Student Name:"));
-        form.add(name);
-        form.add(new JLabel("Roll Number:"));
-        form.add(roll);
-        form.add(new JLabel("Phone Number:"));
-        form.add(phone);
-        form.add(new JLabel("Course:"));
-        form.add(course);
-        form.add(new JLabel("Room Number:"));
-        form.add(room);
-        form.add(new JLabel("Hostel Fee (₹):"));
-        form.add(fee);
+        JPanel form = studentForm(name, roll, phone, course, room, fee);
 
         int result = JOptionPane.showConfirmDialog(
-                this, form, "Register New Student",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            this, form, "Add New Student",
+            JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE
+        );
 
-        if (result != JOptionPane.OK_OPTION) return;
+        if (result == JOptionPane.OK_OPTION) {
+            try {
+                if (name.getText().trim().isEmpty() ||
+                    roll.getText().trim().isEmpty()) {
+                    showError("Student name and roll number are required.");
+                    return;
+                }
 
-        try {
-            String studentName = name.getText().trim();
-            String studentRoll = roll.getText().trim();
-            String studentPhone = phone.getText().trim();
-            String studentCourse = course.getText().trim();
-            String studentRoom = String.valueOf(room.getSelectedItem());
-            double amount = Double.parseDouble(fee.getText().trim());
+                for (Student s : students) {
+                    if (s.roll.equalsIgnoreCase(roll.getText().trim())) {
+                        showError("This roll number already exists.");
+                        return;
+                    }
+                }
 
-            if (studentName.isEmpty() || studentRoll.isEmpty()
-                    || studentPhone.isEmpty() || studentCourse.isEmpty()
-                    || amount <= 0) {
-                throw new IllegalArgumentException("All fields are required.");
+                double amount = Double.parseDouble(fee.getText().trim());
+                if (amount < 0) {
+                    showError("Fee cannot be negative.");
+                    return;
+                }
+
+                Student s = new Student(
+                    name.getText().trim(),
+                    roll.getText().trim(),
+                    phone.getText().trim(),
+                    course.getText().trim(),
+                    room.getText().trim(),
+                    amount
+                );
+
+                students.add(s);
+                save();
+                refreshTables();
+                showMessage("Student added successfully!");
+
+            } catch (NumberFormatException ex) {
+                showError("Please enter a valid fee amount.");
             }
+        }
+    }
 
-            if (!studentPhone.matches("[0-9]{10}")) {
-                throw new IllegalArgumentException("Enter a valid 10-digit phone number.");
+    private JPanel studentForm(
+        JTextField name, JTextField roll, JTextField phone,
+        JTextField course, JTextField room, JTextField fee
+    ) {
+        JPanel form = new JPanel(new GridLayout(0, 2, 12, 10));
+        form.setBackground(WHITE);
+        form.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        addFormField(form, "Student Name", name);
+        addFormField(form, "Roll Number", roll);
+        addFormField(form, "Phone Number", phone);
+        addFormField(form, "Course", course);
+        addFormField(form, "Room Number", room);
+        addFormField(form, "Total Fee", fee);
+
+        return form;
+    }
+
+    private void editStudent() {
+        int row = studentTable.getSelectedRow();
+
+        if (row < 0) {
+            showError("Please select a student to edit.");
+            return;
+        }
+
+        String rollNumber = studentModel.getValueAt(row, 1).toString();
+        Student s = findStudent(rollNumber);
+
+        if (s == null) return;
+
+        JTextField name = new JTextField(s.name);
+        JTextField roll = new JTextField(s.roll);
+        JTextField phone = new JTextField(s.phone);
+        JTextField course = new JTextField(s.course);
+        JTextField room = new JTextField(s.room);
+        JTextField fee = new JTextField(String.valueOf(s.fee));
+
+        styleInput(name);
+        styleInput(roll);
+        styleInput(phone);
+        styleInput(course);
+        styleInput(room);
+        styleInput(fee);
+
+        JPanel form = studentForm(name, roll, phone, course, room, fee);
+
+        int result = JOptionPane.showConfirmDialog(
+            this, form, "Edit Student",
+            JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (result == JOptionPane.OK_OPTION) {
+            try {
+                if (name.getText().trim().isEmpty() ||
+                    roll.getText().trim().isEmpty()) {
+                    showError("Student name and roll number are required.");
+                    return;
+                }
+
+                for (Student other : students) {
+                    if (other != s &&
+                        other.roll.equalsIgnoreCase(roll.getText().trim())) {
+                        showError("Another student already uses this roll number.");
+                        return;
+                    }
+                }
+
+                double amount = Double.parseDouble(fee.getText().trim());
+                if (amount < 0) {
+                    showError("Fee cannot be negative.");
+                    return;
+                }
+
+                s.name = name.getText().trim();
+                s.roll = roll.getText().trim();
+                s.phone = phone.getText().trim();
+                s.course = course.getText().trim();
+                s.room = room.getText().trim();
+                s.fee = amount;
+
+                save();
+                refreshTables();
+                showMessage("Student details updated!");
+
+            } catch (NumberFormatException ex) {
+                showError("Please enter a valid fee amount.");
             }
-
-            if (service.exists(studentRoll)) {
-                throw new IllegalArgumentException("Roll number already exists.");
-            }
-
-            if (service.countRoom(studentRoom) >= 4) {
-                throw new IllegalArgumentException("This room is full.");
-            }
-
-            service.addStudent(new Student(
-                    studentName, studentRoll, studentPhone,
-                    studentCourse, studentRoom, amount));
-
-            JOptionPane.showMessageDialog(this, "Student registered successfully!");
-            showPage("students");
-            updateStatistics();
-
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Enter a valid fee amount.");
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage());
         }
     }
 
     private void deleteStudent() {
-        int row = table.getSelectedRow();
+        int row = studentTable.getSelectedRow();
 
-        if (row == -1) {
-            JOptionPane.showMessageDialog(this, "Select a student to delete.");
+        if (row < 0) {
+            showError("Please select a student to delete.");
             return;
         }
 
-        String roll = String.valueOf(model.getValueAt(row, 1));
+        String roll = studentModel.getValueAt(row, 1).toString();
 
-        int choice = JOptionPane.showConfirmDialog(
-                this, "Are you sure you want to delete this student?",
-                "Confirm Delete", JOptionPane.YES_NO_OPTION);
+        int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Are you sure you want to delete this student?",
+            "Confirm Delete",
+            JOptionPane.YES_NO_OPTION
+        );
 
-        if (choice == JOptionPane.YES_OPTION) {
-            service.deleteStudent(roll);
-            refreshTable("");
-            updateStatistics();
+        if (confirm == JOptionPane.YES_OPTION) {
+            students.removeIf(s -> s.roll.equals(roll));
+            save();
+            refreshTables();
+            showMessage("Student deleted successfully.");
         }
     }
 
-    private void refreshTable(String search) {
-        if (model == null) return;
+    private void searchStudents(String query) {
+        studentModel.setRowCount(0);
+        String q = query.trim().toLowerCase();
 
-        model.setRowCount(0);
+        for (Student s : students) {
+            if (s.name.toLowerCase().contains(q) ||
+                s.roll.toLowerCase().contains(q)) {
+                addStudentRow(s);
+            }
+        }
+    }
 
-        for (Student s : service.getStudents()) {
-            String combined = (s.name + " " + s.roll + " " + s.course)
-                    .toLowerCase();
+    // ROOM MANAGEMENT
+    private JPanel createRoomPage() {
+        JPanel page = pagePanel(
+            "Room Management",
+            "View room occupancy and available student capacity"
+        );
 
-            if (combined.contains(search.toLowerCase())) {
+        String[] columns = {"Room Number", "Occupied Beds", "Available Beds", "Capacity"};
+        DefaultTableModel model = new DefaultTableModel(columns, 0) {
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        JTable table = createTable(model);
+
+        for (int room = 101; room <= 112; room++) {
+            int count = 0;
+            for (Student s : students) {
+                if (s.room.equals(String.valueOf(room))) count++;
+            }
+            model.addRow(new Object[]{
+                room, count, Math.max(0, 4 - count), 4
+            });
+        }
+
+        JPanel center = whitePanel();
+        center.setLayout(new BorderLayout());
+        center.add(new JScrollPane(table), BorderLayout.CENTER);
+
+        JButton refresh = button("Refresh Room Details", BLUE);
+        refresh.addActionListener(e -> {
+            model.setRowCount(0);
+            for (int room = 101; room <= 112; room++) {
+                int count = 0;
+                for (Student s : students) {
+                    if (s.room.equals(String.valueOf(room))) count++;
+                }
                 model.addRow(new Object[]{
-                        s.name, s.roll, s.phone, s.course,
-                        s.room, s.paid ? "Paid" : "Pending"
+                    room, count, Math.max(0, 4 - count), 4
+                });
+            }
+        });
+
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        bottom.setBackground(WHITE);
+        bottom.add(refresh);
+        center.add(bottom, BorderLayout.SOUTH);
+
+        page.add(center, BorderLayout.CENTER);
+        return page;
+    }
+
+    // FEE MANAGEMENT
+    private JPanel createFeePage() {
+        JPanel page = pagePanel(
+            "Fee Management",
+            "Track fee payment status and print student receipts"
+        );
+
+        feeModel = new DefaultTableModel(
+            new String[]{"Name", "Roll Number", "Room", "Fee Amount", "Payment Status"}, 0
+        ) {
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        feeTable = createTable(feeModel);
+
+        JButton paid = button("Mark Fee as Paid", GREEN);
+        JButton receipt = button("Print Receipt", BLUE);
+        JButton refresh = button("Refresh", NAVY);
+
+        paid.addActionListener(e -> markPaid());
+        receipt.addActionListener(e -> printReceipt());
+        refresh.addActionListener(e -> refreshTables());
+
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        toolbar.setBackground(WHITE);
+        toolbar.add(paid);
+        toolbar.add(receipt);
+        toolbar.add(refresh);
+
+        JPanel center = whitePanel();
+        center.setLayout(new BorderLayout());
+        center.add(toolbar, BorderLayout.NORTH);
+        center.add(new JScrollPane(feeTable), BorderLayout.CENTER);
+
+        page.add(center, BorderLayout.CENTER);
+        refreshTables();
+        return page;
+    }
+
+    private void markPaid() {
+        int row = feeTable.getSelectedRow();
+
+        if (row < 0) {
+            showError("Please select a student.");
+            return;
+        }
+
+        String roll = feeModel.getValueAt(row, 1).toString();
+        Student s = findStudent(roll);
+
+        if (s == null) return;
+
+        s.paid = true;
+        save();
+        refreshTables();
+
+        showMessage("Fee marked as paid successfully.");
+    }
+
+    private void printReceipt() {
+        int row = feeTable.getSelectedRow();
+
+        if (row < 0) {
+            showError("Please select a student.");
+            return;
+        }
+
+        String roll = feeModel.getValueAt(row, 1).toString();
+        Student s = findStudent(roll);
+
+        if (s == null) return;
+
+        if (!s.paid) {
+            showError("This student's fee is still pending.");
+            return;
+        }
+
+        JTextArea receipt = new JTextArea();
+        receipt.setFont(new Font("Monospaced", Font.PLAIN, 14));
+        receipt.setForeground(TEXT);
+        receipt.setBackground(WHITE);
+        receipt.setEditable(false);
+
+        receipt.setText(
+            "             HOSTELPRO PREMIUM\n" +
+            "             FEE PAYMENT RECEIPT\n" +
+            "------------------------------------------\n" +
+            "Student Name : " + s.name + "\n" +
+            "Roll Number  : " + s.roll + "\n" +
+            "Phone        : " + s.phone + "\n" +
+            "Course       : " + s.course + "\n" +
+            "Room Number  : " + s.room + "\n" +
+            "Fee Amount   : Rs. " + s.fee + "\n" +
+            "Status       : PAID\n" +
+            "------------------------------------------\n" +
+            "       Thank you for your payment!\n" +
+            "------------------------------------------\n" +
+            "This is a computer-generated receipt.\n"
+        );
+
+        try {
+            receipt.print();
+        } catch (Exception ex) {
+            showError("Unable to print receipt: " + ex.getMessage());
+        }
+    }
+
+    // REPORTS
+    private JPanel createReportPage() {
+        JPanel page = pagePanel(
+            "Reports & Analytics",
+            "View student statistics and hostel fee collection summary"
+        );
+
+        JPanel center = whitePanel();
+        center.setLayout(new BorderLayout(10, 15));
+
+        JTextArea report = new JTextArea();
+        report.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        report.setForeground(TEXT);
+        report.setBackground(WHITE);
+        report.setEditable(false);
+        report.setMargin(new Insets(20, 20, 20, 20));
+
+        JButton refresh = button("Generate Report", BLUE);
+        JButton print = button("Print Report", GREEN);
+
+        refresh.addActionListener(e -> report.setText(generateReport()));
+        print.addActionListener(e -> {
+            try {
+                report.print();
+            } catch (Exception ex) {
+                showError("Unable to print report.");
+            }
+        });
+
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        toolbar.setBackground(WHITE);
+        toolbar.add(refresh);
+        toolbar.add(print);
+
+        center.add(toolbar, BorderLayout.NORTH);
+        center.add(new JScrollPane(report), BorderLayout.CENTER);
+
+        report.setText(generateReport());
+
+        page.add(center, BorderLayout.CENTER);
+        return page;
+    }
+
+    private String generateReport() {
+        double total = 0;
+        double collected = 0;
+        int paidCount = 0;
+        int pendingCount = 0;
+
+        for (Student s : students) {
+            total += s.fee;
+            if (s.paid) {
+                collected += s.fee;
+                paidCount++;
+            } else {
+                pendingCount++;
+            }
+        }
+
+        return
+            "HOSTELPRO PREMIUM - HOSTEL REPORT\n" +
+            "============================================\n\n" +
+            "STUDENT STATISTICS\n" +
+            "--------------------------------------------\n" +
+            "Total Students       : " + students.size() + "\n" +
+            "Fees Paid Students   : " + paidCount + "\n" +
+            "Fees Pending Students: " + pendingCount + "\n\n" +
+            "FEE COLLECTION SUMMARY\n" +
+            "--------------------------------------------\n" +
+            "Total Expected Fees  : Rs. " + total + "\n" +
+            "Total Fees Collected : Rs. " + collected + "\n" +
+            "Pending Fee Amount   : Rs. " + (total - collected) + "\n\n" +
+            "ROOM SUMMARY\n" +
+            "--------------------------------------------\n" +
+            "Rooms Available      : 101 - 112\n" +
+            "Total Room Capacity  : 48 beds\n\n" +
+            "============================================\n" +
+            "Generated by HostelPro Premium\n";
+    }
+
+    // TABLE REFRESH
+    private void refreshTables() {
+        if (studentModel != null) {
+            studentModel.setRowCount(0);
+            for (Student s : students) addStudentRow(s);
+        }
+
+        if (feeModel != null) {
+            feeModel.setRowCount(0);
+            for (Student s : students) {
+                feeModel.addRow(new Object[]{
+                    s.name, s.roll, s.room, "Rs. " + s.fee,
+                    s.paid ? "PAID" : "PENDING"
                 });
             }
         }
     }
 
-    private void refreshData() {
-        updateStatistics();
-    }
-
-    private void updateStatistics() {
-        if (totalStudents == null) return;
-
-        totalStudents.setText(String.valueOf(service.getStudents().size()));
-        totalRooms.setText("12");
-
-        int occupied = 0;
-        double total = 0;
-
-        for (int i = 101; i <= 112; i++) {
-            if (service.countRoom(String.valueOf(i)) > 0) occupied++;
-        }
-
-        for (Student s : service.getStudents()) {
-            if (s.paid) total += s.fee;
-        }
-
-        occupiedRooms.setText(String.valueOf(occupied));
-        revenue.setText("₹" + String.format("%.0f", total));
-    }
-
-    private void styleButton(JButton button) {
-        button.setBackground(BLUE);
-        button.setForeground(WHITE);
-        button.setFocusPainted(false);
-        button.setBorder(new EmptyBorder(10, 15, 10, 15));
-        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-    }
-
-    private void styleTable(JTable table) {
-        table.setRowHeight(35);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        table.getTableHeader().setBackground(NAVY);
-        table.getTableHeader().setForeground(WHITE);
-        table.setSelectionBackground(new Color(220, 230, 255));
-        table.setSelectionForeground(NAVY);
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(
-                        UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) {}
-
-            new Main().setVisible(true);
+    private void addStudentRow(Student s) {
+        studentModel.addRow(new Object[]{
+            s.name, s.roll, s.phone, s.course, s.room,
+            "Rs. " + s.fee, s.paid ? "PAID" : "PENDING"
         });
+    }
+
+    // UI HELPERS
+    private static JTable createTable(DefaultTableModel model) {
+        JTable table = new JTable(model);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        table.setForeground(TEXT);
+        table.setBackground(WHITE);
+        table.setSelectionBackground(new Color(205, 225, 255));
+        table.setSelectionForeground(NAVY);
+        table.setRowHeight(34);
+        table.setGridColor(BORDER);
+        table.setShowGrid(true);
+        table.setFillsViewportHeight(true);
+
+        JTableHeader header = table.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(NAVY);
+        header.setForeground(WHITE);
+        header.setPreferredSize(new Dimension(0, 40));
+        header.setReorderingAllowed(false);
+
+        return table;
+    }
+
+    private static JPanel whitePanel() {
+        JPanel panel = new JPanel();
+        panel.setBackground(WHITE);
+        panel.setBorder(new CompoundBorder(
+            new LineBorder(BORDER, 1),
+            new EmptyBorder(12, 12, 12, 12)
+        ));
+        return panel;
+    }
+
+    private static JButton button(String text, Color color) {
+        JButton b = new JButton(text);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        b.setForeground(WHITE);
+        b.setBackground(color);
+        b.setFocusPainted(false);
+        b.setBorder(new EmptyBorder(11, 15, 11, 15));
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return b;
+    }
+
+    private static void styleInput(JTextField field) {
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setForeground(TEXT);
+        field.setBackground(WHITE);
+        field.setCaretColor(TEXT);
+        field.setBorder(new CompoundBorder(
+            new LineBorder(new Color(165, 180, 200), 1),
+            new EmptyBorder(8, 9, 8, 9)
+        ));
+    }
+
+    private static void addFormField(JPanel panel, String label, JTextField field) {
+        JLabel l = new JLabel(label);
+        l.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        l.setForeground(TEXT);
+        panel.add(l);
+        panel.add(field);
+    }
+
+    private Student findStudent(String roll) {
+        for (Student s : students) {
+            if (s.roll.equals(roll)) return s;
+        }
+        return null;
+    }
+
+    private int countPaid() {
+        int count = 0;
+        for (Student s : students) if (s.paid) count++;
+        return count;
+    }
+
+    private int countPending() {
+        return students.size() - countPaid();
+    }
+
+    private void save() {
+        HostelService.saveStudents(students);
+    }
+
+    private void showMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, "HostelPro", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(this, message, "HostelPro", JOptionPane.ERROR_MESSAGE);
+    }
+
+    // LOCAL DATA SERVICE
+    static class HostelService {
+        private static final String FILE_NAME = "hostel_data.dat";
+
+        static List<Student> loadStudents() {
+            File file = new File(FILE_NAME);
+
+            if (!file.exists()) return new ArrayList<>();
+
+            try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(file))) {
+                Object data = in.readObject();
+
+                if (data instanceof List<?>) {
+                    List<Student> result = new ArrayList<>();
+                    for (Object item : (List<?>) data) {
+                        if (item instanceof Student) result.add((Student) item);
+                    }
+                    return result;
+                }
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(
+                    null,
+                    "Could not load saved student data.\n" + e.getMessage(),
+                    "Data Loading Error",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
+
+            return new ArrayList<>();
+        }
+
+        static void saveStudents(List<Student> students) {
+            try (ObjectOutputStream out = new ObjectOutputStream(
+                new FileOutputStream(FILE_NAME))) {
+                out.writeObject(new ArrayList<>(students));
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(
+                    null,
+                    "Could not save student data.\n" + e.getMessage(),
+                    "Data Saving Error",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
+        }
     }
 }
 
-// ---------------- BACKEND: STUDENT MODEL ----------------
-
+// KEEP THIS STUDENT CLASS OUTSIDE MAIN.
+// Its serialVersionUID preserves compatibility with your existing saved data.
 class Student implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    String name;
-    String roll;
-    String phone;
-    String course;
-    String room;
+    String name, roll, phone, course, room;
     double fee;
     boolean paid;
 
@@ -591,78 +988,5 @@ class Student implements Serializable {
         this.room = room;
         this.fee = fee;
         this.paid = false;
-    }
-}
-
-// ---------------- BACKEND: HOSTEL SERVICE ----------------
-
-class HostelService {
-
-    private final List<Student> students = new ArrayList<>();
-    private final File dataFile = new File("hostel_data.dat");
-
-    HostelService() {
-        loadData();
-    }
-
-    List<Student> getStudents() {
-        return new ArrayList<>(students);
-    }
-
-    boolean exists(String roll) {
-        for (Student s : students) {
-            if (s.roll.equalsIgnoreCase(roll)) return true;
-        }
-        return false;
-    }
-
-    int countRoom(String room) {
-        int count = 0;
-        for (Student s : students) {
-            if (s.room.equals(room)) count++;
-        }
-        return count;
-    }
-
-    void addStudent(Student student) {
-        students.add(student);
-        saveData();
-    }
-
-    void deleteStudent(String roll) {
-        students.removeIf(s -> s.roll.equalsIgnoreCase(roll));
-        saveData();
-    }
-
-    void markPaid(String roll) {
-        for (Student s : students) {
-            if (s.roll.equalsIgnoreCase(roll)) {
-                s.paid = true;
-                break;
-            }
-        }
-        saveData();
-    }
-
-    @SuppressWarnings("unchecked")
-    private void loadData() {
-        if (!dataFile.exists()) return;
-
-        try (ObjectInputStream in =
-                     new ObjectInputStream(new FileInputStream(dataFile))) {
-            students.addAll((List<Student>) in.readObject());
-        } catch (Exception e) {
-            System.out.println("Could not load saved data: " + e.getMessage());
-        }
-    }
-
-    private void saveData() {
-        try (ObjectOutputStream out =
-                     new ObjectOutputStream(new FileOutputStream(dataFile))) {
-            out.writeObject(students);
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(null,
-                    "Unable to save data: " + e.getMessage());
-        }
     }
 }
